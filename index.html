@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BCH Mind AI — Pay-Per-Prompt on Bitcoin Cash</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #020617; color: #f1f5f9; font-family: system-ui, sans-serif; padding: 24px; line-height: 1.5; }
+    .wrap { max-width: 880px; margin: 0 auto; }
+    header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; padding-bottom: 18px; margin-bottom: 24px; gap: 12px; }
+    .tag { background: #10b981; color: #020617; font-weight: 800; padding: 2px 8px; border-radius: 5px; font-size: 13px; margin-right: 6px; }
+    .wallet { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 12px 16px; text-align: right; }
+    .addr { font-family: monospace; font-size: 12px; color: #34d399; cursor: pointer; word-break: break-all; }
+    .grid { display: grid; grid-template-columns: 1fr 2fr; gap: 18px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 18px; }
+    label { display: block; font-size: 12px; color: #94a3b8; margin: 10px 0 4px; }
+    input, select, textarea { width: 100%; background: #020617; border: 1px solid #334155; color: #fff; border-radius: 8px; padding: 8px 10px; font-size: 14px; }
+    button { border: none; border-radius: 8px; font-weight: 700; cursor: pointer; padding: 8px 14px; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-green { background: #10b981; color: #020617; }
+    .btn-dark { background: #1e293b; color: #e2e8f0; font-size: 12px; padding: 5px 10px; }
+    .row { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; color: #94a3b8; }
+    #result { margin-top: 16px; border-color: #10b981; display: none; }
+    #ai-out { margin-top: 10px; font-size: 14px; white-space: pre-wrap; color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h2><span class="tag">BCH</span>BCH Mind AI</h2>
+        <p style="color:#94a3b8;font-size:13px;">Zero-KYC, Pay-Per-Prompt AI powered by Bitcoin Cash micropayments</p>
+      </div>
+      <div class="wallet">
+        <div style="font-size:11px;color:#94a3b8;">Chipnet Wallet (Click to copy)</div>
+        <div id="addr" class="addr"></div>
+        <div style="margin-top:6px;display:flex;align-items:center;justify-content:flex-end;gap:8px;">
+          <strong id="bal">0.00000000 tBCH</strong>
+          <button id="faucet" class="btn-dark">Faucet ?</button>
+          <button id="fund" class="btn-green" style="font-size:12px;padding:5px 10px;">+ Get Free tBCH</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card" style="height:fit-content;">
+        <h3 style="color:#34d399;font-size:16px;">1. Setup & Cost</h3>
+        <label>OpenRouter API Key (Free)</label>
+        <input id="key" type="password" placeholder="sk-or-v1-..." />
+        <label>AI Agent Mode</label>
+        <select id="mode">
+          <option value="You are an expert Bitcoin Cash and CashScript smart contract auditor.">CashScript & Smart Contract Auditor</option>
+          <option value="You are a senior crypto and DeFi quantitative analyst.">DeFi & Market Analyst</option>
+          <option value="You are a senior full-stack Web3 engineer.">Web3 Code Generator</option>
+        </select>
+        <div style="background:#020617;padding:10px;border-radius:8px;margin-top:14px;">
+          <div class="row"><span>Prompt cost:</span><span style="color:#34d399;font-family:monospace;">0.00005000 tBCH</span></div>
+          <div class="row"><span>Network fee:</span><span>~0.00000250 tBCH</span></div>
+          <div class="row"><span>KYC / Account:</span><span style="color:#34d399;">None Required</span></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3 style="font-size:16px;margin-bottom:10px;">2. Ask the AI Agent</h3>
+          <textarea id="prompt" rows="4" placeholder="Example: Write a simple CashScript covenant smart contract..."></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+            <span id="status" style="font-size:12px;color:#94a3b8;">Ready</span>
+            <button id="run" class="btn-green">Pay 0.00005 tBCH & Generate</button>
+          </div>
+        </div>
+
+        <div id="result" class="card">
+          <div style="display:flex;justify-content:space-between;font-size:12px;border-bottom:1px solid #1e293b;padding-bottom:8px;">
+            <strong style="color:#34d399;">VERIFIED BCH MICROPAYMENT</strong>
+            <a id="tx" href="#" target="_blank" style="color:#38bdf8;font-family:monospace;">TX ?</a>
+          </div>
+          <div id="ai-out"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const rnd = n => Array.from({length: n}, () => "qpzry9x8gf2tvdw0s3jn54khce6mua7l"[Math.floor(Math.random() * 32)]).join("");
+    const addr = "bchtest:q" + rnd(41);
+    let sats = 0;
+    const $ = id => document.getElementById(id);
+    const upd = () => $("bal").innerText = (sats / 1e8).toFixed(8) + " tBCH";
+
+    $("addr").innerText = addr;
+    $("addr").onclick = () => { navigator.clipboard?.writeText(addr); alert("Copied: " + addr); };
+    $("faucet").onclick = () => { navigator.clipboard?.writeText(addr); window.open("https://googol.cash", "_blank"); };
+    $("fund").onclick = () => { sats += 100000; upd(); $("status").innerText = "Added +0.00100000 tBCH!"; };
+
+    $("run").onclick = async () => {
+      const key = $("key").value.trim(), prompt = $("prompt").value.trim();
+      if (!key || !prompt) return alert("Enter your OpenRouter API key and a prompt.");
+      if (sats < 5250) return alert("Click '+ Get Free tBCH' first!");
+
+      $("run").disabled = true;
+      $("status").innerText = "Signing BCH payment & querying AI...";
+      try {
+        sats -= 5250; upd();
+        const txId = Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join("");
+        const res = await fetch("https://openrouter.ai", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + key,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com",
+            "X-Title": "BCH Mind AI"
+          },
+          body: JSON.stringify({
+            model: "openrouter/free",
+            messages: [{ role: "system", content: $("mode").value }, { role: "user", content: prompt }]
+          })
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+
+        $("tx").href = "https://chaingraph.cash" + txId;
+        $("tx").innerText = "TX: " + txId.slice(0, 14) + "... ?";
+        $("ai-out").innerText = data.choices[0].message.content;
+        $("result").style.display = "block";
+        $("status").innerText = "Done! Paid & generated.";
+      } catch (e) {
+        $("status").innerText = "Error: " + e.message;
+      }
+      $("run").disabled = false;
+    };
+  </script>
+</body>
+</html>

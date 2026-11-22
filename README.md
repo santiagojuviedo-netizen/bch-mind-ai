@@ -1,4 +1,6 @@
-# BCH Mind AI — Zero-KYC Pay-Per-Prompt AI on Bitcoin Cash
+**Live Demo:** https://github.io
+
+# BCH Mind AI â€” Zero-KYC Pay-Per-Prompt AI on Bitcoin Cash
 
 > **Built for BCH BLAZE 2026** | Instant, permissionless AI access powered by Bitcoin Cash micropayments.
 
